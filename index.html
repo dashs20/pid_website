@@ -8,135 +8,168 @@
     body {
       background: #0a0f0a; color: #a0ffb0;
       font-family: 'Courier New', monospace;
-      display: flex; flex-direction: column; align-items: center;
-      min-height: 100vh; padding: 20px; gap: 12px;
+      display: flex; flex-direction: row; align-items: flex-start;
+      height: 100vh; padding: 10px 14px; gap: 12px; overflow: hidden;
     }
-    h1 { font-size: 1.3rem; letter-spacing: 3px; color: #33ff66; margin-top: 4px; text-shadow: 0 0 8px #33ff6688; }
+    h1 { font-size: 1.1rem; letter-spacing: 3px; color: #33ff66; text-shadow: 0 0 8px #33ff6688; }
     canvas { border: 1px solid #1a3a1a; border-radius: 6px; display: block; }
-    #controls { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    #left-col {
+      flex: 0 0 420px;
+      display: flex; flex-direction: column; align-items: center; gap: 7px;
+      overflow: hidden; height: 100%;
+    }
+    #right-col {
+      flex: 1; min-width: 0;
+      display: flex; flex-direction: column; align-items: stretch; gap: 7px;
+      height: 100%;
+    }
+    /* Growing plot-wrap: fills remaining column space */
+    .plot-wrap.fill {
+      flex: 1; min-height: 0; align-self: stretch;
+      display: flex; flex-direction: column; gap: 3px; align-items: stretch;
+    }
+    .plot-wrap.fill canvas { flex: 1; min-height: 0; display: block; }
+    #controls { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: center; }
     .knob-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-    .knob-group label { font-size: 0.68rem; letter-spacing: 2px; color: #4a8a5a; }
-    .knob-group .val { font-size: 0.85rem; color: #a0ffb0; min-width: 64px; text-align: center; }
+    .knob-group label { font-size: 0.62rem; letter-spacing: 2px; color: #4a8a5a; }
+    .knob-group .val { font-size: 0.8rem; color: #a0ffb0; min-width: 56px; text-align: center; }
     canvas.knob { cursor: ns-resize; display: block; }
-    .divider { width: 1px; height: 80px; background: #1a3a1a; }
-    #buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .divider { width: 1px; height: 70px; background: #1a3a1a; }
+    #buttons { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
     button {
-      padding: 7px 14px; background: #0d1f0d; border: 1px solid #2a5a2a;
+      padding: 5px 11px; background: #0d1f0d; border: 1px solid #2a5a2a;
       color: #4af074; border-radius: 5px; cursor: pointer;
-      font-family: inherit; font-size: 0.78rem; letter-spacing: 1px;
+      font-family: inherit; font-size: 0.72rem; letter-spacing: 1px;
     }
     button:hover { background: #122012; border-color: #33ff66; color: #33ff66; }
     button.active { background: #0d2a0d; border-color: #33ff66; color: #33ff66; }
-    #status { font-size: 0.78rem; color: #ff8844; height: 18px; letter-spacing: 1px; }
-
-    .plot-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .plot-label { font-size: 0.65rem; letter-spacing: 2px; color: #2a5a2a; text-align: center; }
+    #status { font-size: 0.72rem; color: #ff8844; height: 16px; letter-spacing: 1px; }
+    .plot-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .plot-label { font-size: 0.58rem; letter-spacing: 2px; color: #2a5a2a; text-align: center; }
 
     /* Physics sliders */
     #phys-controls {
-      display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; align-items: flex-start;
-      border: 1px solid #1a3a1a; border-radius: 6px; padding: 10px 18px; background: #0c170c;
+      display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; align-items: flex-start;
+      border: 1px solid #1a3a1a; border-radius: 6px; padding: 7px 14px; background: #0c170c;
     }
-    .slider-group { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 120px; }
-    .slider-group label { font-size: 0.62rem; letter-spacing: 2px; color: #4a8a5a; }
-    .slider-group .sval { font-size: 0.82rem; color: #a0ffb0; }
+    .slider-group { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 110px; }
+    .slider-group label { font-size: 0.58rem; letter-spacing: 2px; color: #4a8a5a; }
+    .slider-group .sval { font-size: 0.76rem; color: #a0ffb0; }
     input[type=range] {
-      -webkit-appearance: none; width: 120px; height: 4px;
+      -webkit-appearance: none; width: 110px; height: 4px;
       background: #1a3a1a; border-radius: 2px; outline: none; cursor: pointer;
     }
     input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 14px; height: 14px;
+      -webkit-appearance: none; width: 13px; height: 13px;
       background: #33ff66; border-radius: 50%; box-shadow: 0 0 4px #33ff6688;
     }
     input[type=range]::-moz-range-thumb {
-      width: 14px; height: 14px; background: #33ff66; border-radius: 50%; border: none;
+      width: 13px; height: 13px; background: #33ff66; border-radius: 50%; border: none;
     }
   </style>
 </head>
 <body>
-<h1>learnaboutpid.com</h1>
-<div style="font-size:0.7rem; letter-spacing:3px; color:#2a6a3a; margin-top:-6px;">By Quantum Projects</div>
-<canvas id="sim"  width="720" height="285"></canvas>
-<canvas id="plot" width="720" height="88"></canvas>
+<div id="left-col">
+  <div style="text-align:center;">
+    <h1>learnaboutpid.com</h1>
+    <div style="font-size:0.6rem; letter-spacing:3px; color:#2a6a3a;">By Quantum Projects</div>
+  </div>
 
-<div id="controls">
-  <div class="knob-group">
-    <label>P GAIN</label>
-    <canvas class="knob" id="kp" width="88" height="88"></canvas>
-    <div class="val" id="vp">—</div>
-  </div>
-  <div class="knob-group">
-    <label>I GAIN</label>
-    <canvas class="knob" id="ki" width="88" height="88"></canvas>
-    <div class="val" id="vi">—</div>
-  </div>
-  <div class="knob-group">
-    <label>D GAIN</label>
-    <canvas class="knob" id="kd" width="88" height="88"></canvas>
-    <div class="val" id="vd">—</div>
-  </div>
-  <div class="divider"></div>
-  <div class="knob-group">
-    <label id="sp-label">SETPOINT (°)</label>
-    <canvas class="knob" id="ksp" width="88" height="88"></canvas>
-    <div class="val" id="vsp">—</div>
-  </div>
-  <div class="divider"></div>
   <div id="buttons">
     <button id="btn-reset">RESET</button>
     <button id="btn-nudge">NUDGE</button>
     <button id="btn-posmode">MODE: ANGLE</button>
   </div>
-</div>
-<div id="phys-controls">
-  <div class="slider-group">
-    <label>MAX FORCE (N)</label>
-    <input type="range" id="sl-force" min="5" max="200" step="1" value="60">
-    <div class="sval" id="sv-force">60 N</div>
+
+  <div id="controls">
+    <div class="knob-group">
+      <label>P GAIN</label>
+      <canvas class="knob" id="kp" width="72" height="72"></canvas>
+      <div class="val" id="vp">—</div>
+    </div>
+    <div class="knob-group">
+      <label>I GAIN</label>
+      <canvas class="knob" id="ki" width="72" height="72"></canvas>
+      <div class="val" id="vi">—</div>
+    </div>
+    <div class="knob-group">
+      <label>D GAIN</label>
+      <canvas class="knob" id="kd" width="72" height="72"></canvas>
+      <div class="val" id="vd">—</div>
+    </div>
+    <div class="divider"></div>
+    <div class="knob-group">
+      <label id="sp-label">SETPOINT (°)</label>
+      <canvas class="knob" id="ksp" width="72" height="72"></canvas>
+      <div class="val" id="vsp">—</div>
+    </div>
   </div>
-  <div class="slider-group">
-    <label>CART MASS (kg)</label>
-    <input type="range" id="sl-cart" min="0.2" max="5" step="0.1" value="1.0">
-    <div class="sval" id="sv-cart">1.0 kg</div>
+
+  <div id="pos-controls" style="display:none; flex-direction:column; align-items:center; gap:5px; width:100%;">
+    <div style="font-size:0.58rem; letter-spacing:3px; color:#c8ff44;">OUTER LOOP — POSITION CONTROLLER</div>
+    <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; justify-content:center;">
+      <div class="knob-group">
+        <label style="color:#c8ff44;">P GAIN</label>
+        <canvas class="knob" id="pkp" width="72" height="72"></canvas>
+        <div class="val" id="vpkp">—</div>
+      </div>
+      <div class="knob-group">
+        <label style="color:#c8ff44;">I GAIN</label>
+        <canvas class="knob" id="pki" width="72" height="72"></canvas>
+        <div class="val" id="vpki">—</div>
+      </div>
+      <div class="knob-group">
+        <label style="color:#c8ff44;">D GAIN</label>
+        <canvas class="knob" id="pkd" width="72" height="72"></canvas>
+        <div class="val" id="vpkd">—</div>
+      </div>
+    </div>
   </div>
-  <div class="slider-group">
-    <label>POLE MASS (kg)</label>
-    <input type="range" id="sl-pole" min="0.01" max="2" step="0.01" value="0.15">
-    <div class="sval" id="sv-pole">0.15 kg</div>
+
+  <div id="phys-controls">
+    <div class="slider-group">
+      <label>MAX FORCE (N)</label>
+      <input type="range" id="sl-force" min="5" max="200" step="1" value="60">
+      <div class="sval" id="sv-force">60 N</div>
+    </div>
+    <div class="slider-group">
+      <label>CART MASS (kg)</label>
+      <input type="range" id="sl-cart" min="0.2" max="5" step="0.1" value="1.0">
+      <div class="sval" id="sv-cart">1.0 kg</div>
+    </div>
+    <div class="slider-group">
+      <label>POLE MASS (kg)</label>
+      <input type="range" id="sl-pole" min="0.01" max="2" step="0.01" value="0.15">
+      <div class="sval" id="sv-pole">0.15 kg</div>
+    </div>
+    <div class="slider-group">
+      <label>POLE LENGTH (m)</label>
+      <input type="range" id="sl-len" min="0.1" max="2" step="0.05" value="0.8">
+      <div class="sval" id="sv-len">0.80 m</div>
+    </div>
   </div>
-  <div class="slider-group">
-    <label>POLE LENGTH (m)</label>
-    <input type="range" id="sl-len" min="0.1" max="2" step="0.05" value="0.8">
-    <div class="sval" id="sv-len">0.80 m</div>
+
+  <div id="status"></div>
+
+  <div class="plot-wrap fill">
+    <div class="plot-label">INNER STEP RESPONSE  (1° θ step)</div>
+    <canvas id="step" width="620" height="200"></canvas>
+  </div>
+  <div class="plot-wrap fill">
+    <div class="plot-label">OUTER STEP RESPONSE  (10 cm x step)</div>
+    <canvas id="outer-step" width="620" height="200"></canvas>
   </div>
 </div>
 
-<div id="pos-controls" style="display:none; flex-direction:column; align-items:center; gap:6px; width:100%;">
-  <div style="font-size:0.65rem; letter-spacing:3px; color:#c8ff44; margin-top:4px;">OUTER LOOP — POSITION CONTROLLER</div>
-  <div style="display:flex; gap:22px; align-items:center; flex-wrap:wrap; justify-content:center;">
-    <div class="knob-group">
-      <label style="color:#c8ff44;">P GAIN</label>
-      <canvas class="knob" id="pkp" width="88" height="88"></canvas>
-      <div class="val" id="vpkp">—</div>
-    </div>
-    <div class="knob-group">
-      <label style="color:#c8ff44;">I GAIN</label>
-      <canvas class="knob" id="pki" width="88" height="88"></canvas>
-      <div class="val" id="vpki">—</div>
-    </div>
-    <div class="knob-group">
-      <label style="color:#c8ff44;">D GAIN</label>
-      <canvas class="knob" id="pkd" width="88" height="88"></canvas>
-      <div class="val" id="vpkd">—</div>
-    </div>
+<div id="right-col">
+  <div class="plot-wrap fill">
+    <div class="plot-label">PENDULUM SIM</div>
+    <canvas id="sim"  width="700" height="580"></canvas>
   </div>
-</div>
-<div id="status"></div>
-
-<!-- Step response -->
-<div class="plot-wrap">
-  <div class="plot-label">STEP RESPONSE  (linearized, 1° θ setpoint step)</div>
-  <canvas id="step" width="720" height="150"></canvas>
+  <div class="plot-wrap">
+    <div class="plot-label">θ HISTORY</div>
+    <canvas id="plot" width="700" height="72"></canvas>
+  </div>
 </div>
 
 
@@ -186,7 +219,7 @@ function getThSp() {
     posIntegral = Math.max(-2, Math.min(2, posIntegral));
     const deriv = (err - posPrevErr) / DT;
     posPrevErr = err;
-    return Math.max(-Math.PI/2, Math.min(Math.PI/2, posPid.Kp*err + posPid.Ki*posIntegral + posPid.Kd*deriv));
+    return Math.max(-Math.PI/3, Math.min(Math.PI/3, posPid.Kp*err + posPid.Ki*posIntegral + (posPid.Kd/100)*deriv));
   }
   return pid.setpoint;
 }
@@ -242,15 +275,47 @@ function computeStepResponse() {
   return pts;
 }
 
+// ─── Outer loop step response (linearized cascade) ───────────────────────────
+// 6-state: [x, ẋ, θ, θ̇, ∫θ_err, ∫e_x]
+// Outer PID commands θ_sp = Kpp·e_x + Kpi·∫e_x + Kpd·ė_x
+// Inner PID tracks θ_sp; linearized about θ=0
+function computeOuterStepResponse() {
+  const {Ath,Bth,Axth,Bx}=linCoeffs();
+  const Kp=pid.Kp,Ki=pid.Ki,Kd=pid.Kd;
+  const Kpp=posPid.Kp,Kpi=posPid.Ki,Kpd=posPid.Kd/100;
+  // Substitute θ_sp = -Kpp·x - Kpd·ẋ + Kpi·∫e_x + Kpp·x_sp into linearized equations
+  const A=[
+    [0,              1,           0,          0,      0,      0    ],
+    [Bx*Kp*Kpp,      Bx*Kp*Kpd,  Axth+Bx*Kp, Bx*Kd,  Bx*Ki,  -Bx*Kp*Kpi ],
+    [0,              0,           0,          1,      0,      0    ],
+    [Bth*Kp*Kpp,     Bth*Kp*Kpd, Ath+Bth*Kp, Bth*Kd, Bth*Ki, -Bth*Kp*Kpi],
+    [Kpp,            Kpd,         1,          0,      0,      -Kpi ],
+    [-1,             0,           0,          0,      0,      0    ],
+  ];
+  const Br=[0, -Bx*Kp*Kpp, 0, -Bth*Kp*Kpp, -Kpp, 1];
+  const r=0.1; // 10 cm step
+  const dt=0.002, T=8.0, N=Math.floor(T/dt);
+  let z=[0,0,0,0,0,0];
+  const pts=[];
+  for(let i=0;i<N;i++){
+    const zdot=z.map((_,ri)=>A[ri].reduce((s,a,j)=>s+a*z[j],0)+Br[ri]*r);
+    z=z.map((zi,i)=>zi+zdot[i]*dt);
+    if(i%5===0) pts.push({t:i*dt, x:z[0], theta:z[2]});
+  }
+  return pts;
+}
+
 // ─── Cached analysis data ─────────────────────────────────────────────────────
-let stepData=null;
+let stepData=null, outerStepData=null;
 let analysisTimer=null;
 
 function scheduleAnalysis(){
   clearTimeout(analysisTimer);
   analysisTimer=setTimeout(()=>{
     stepData=computeStepResponse();
+    outerStepData=computeOuterStepResponse();
     renderStepResp();
+    renderOuterStepResp();
   },130);
 }
 
@@ -306,13 +371,13 @@ const spKnob=makeKnob('ksp','vsp',{min:-20,max:20,init:0,log:false,color:'#c8ff4
 });
 
 makeKnob('pkp','vpkp',{min:0.01,max:5,init:posPid.Kp,log:true,color:'#c8ff44',fmt:v=>v.toFixed(3),
-  onSet:v=>{posPid.Kp=v;}
+  onSet:v=>{posPid.Kp=v;scheduleAnalysis();}
 });
 makeKnob('pki','vpki',{min:0,max:3,init:posPid.Ki,log:false,color:'#c8ff44',fmt:v=>v.toFixed(3),
-  onSet:v=>{posPid.Ki=v;posIntegral=0;}
+  onSet:v=>{posPid.Ki=v;posIntegral=0;scheduleAnalysis();}
 });
 makeKnob('pkd','vpkd',{min:0,max:2,init:posPid.Kd,log:false,color:'#c8ff44',fmt:v=>v.toFixed(3),
-  onSet:v=>{posPid.Kd=v;}
+  onSet:v=>{posPid.Kd=v;scheduleAnalysis();}
 });
 
 // ─── Mode toggle ──────────────────────────────────────────────────────────────
@@ -404,10 +469,80 @@ function renderStepResp(){
   ctx.fillText('θ(t)  [linearized step response]',ML+4,MT+12);
 }
 
+// ─── Outer step response renderer ────────────────────────────────────────────
+function renderOuterStepResp(){
+  if(!outerStepData||outerStepData.length===0) return;
+  const cv=document.getElementById('outer-step'),ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,ML=50,MR=15,MT=12,MB=28;
+  const PW=W-ML-MR,PH=H-MT-MB;
+  ctx.fillStyle='#0b120b';ctx.fillRect(0,0,W,H);
+
+  const r=0.1; // 10 cm setpoint
+  const tMax=outerStepData[outerStepData.length-1].t;
+  const allX=outerStepData.map(d=>d.x);
+  const xMin=Math.min(0,...allX)*1.1, xMax=Math.max(r,...allX)*1.3;
+  const toX=t=>ML+(t/tMax)*PW;
+  const toY=x=>MT+(1-(x-xMin)/(xMax-xMin))*PH;
+
+  // Grid
+  ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;
+  for(let t=0;t<=tMax;t+=1){const px=toX(t);ctx.beginPath();ctx.moveTo(px,MT);ctx.lineTo(px,MT+PH);ctx.stroke();}
+  // Zero line
+  ctx.beginPath();ctx.moveTo(ML,toY(0));ctx.lineTo(ML+PW,toY(0));ctx.strokeStyle='#222';ctx.lineWidth=1;ctx.stroke();
+  // Setpoint line
+  const pySp=toY(r);
+  ctx.beginPath();ctx.moveTo(ML,pySp);ctx.lineTo(ML+PW,pySp);
+  ctx.strokeStyle='rgba(200,255,68,0.5)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(200,255,68,0.6)';ctx.font='9px monospace';ctx.textAlign='left';
+  ctx.fillText('setpoint 10 cm',ML+3,pySp-3);
+
+  // ±2% band
+  const band=0.02*r;
+  ctx.fillStyle='rgba(51,255,102,0.05)';
+  ctx.fillRect(ML,toY(r+band),PW,toY(r-band)-toY(r+band));
+
+  // x(t) curve
+  ctx.beginPath();
+  outerStepData.forEach((d,i)=>{const px=toX(d.t),py=toY(d.x);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});
+  ctx.strokeStyle='#33ff66';ctx.lineWidth=2;ctx.stroke();
+
+  // Overshoot marker
+  const maxX=Math.max(...allX),maxIdx=allX.indexOf(maxX);
+  if(maxX>r*1.005){
+    const px=toX(outerStepData[maxIdx].t),py=toY(maxX);
+    ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fillStyle='#f84';ctx.fill();
+    ctx.fillStyle='#f84';ctx.font='9px monospace';ctx.textAlign='left';
+    ctx.fillText(`OS=${((maxX-r)/r*100).toFixed(1)}%`,px+5,py-3);
+  }
+
+  // Settling time
+  let settleT=null;
+  for(let i=outerStepData.length-1;i>=0;i--){if(Math.abs(outerStepData[i].x-r)>band){settleT=outerStepData[i].t;break;}}
+  if(settleT!==null&&settleT>0.01){
+    const px=toX(settleT);
+    ctx.beginPath();ctx.moveTo(px,MT);ctx.lineTo(px,MT+PH);
+    ctx.strokeStyle='rgba(51,255,102,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#33ff66';ctx.font='9px monospace';ctx.textAlign='left';
+    ctx.fillText(`ts=${settleT.toFixed(2)}s`,px+3,MT+12);
+  }
+
+  // Axes
+  ctx.strokeStyle='#333';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(ML,MT);ctx.lineTo(ML,MT+PH);ctx.lineTo(ML+PW,MT+PH);ctx.stroke();
+  ctx.fillStyle='#444';ctx.font='9px monospace';ctx.textAlign='center';
+  for(let t=0;t<=tMax;t+=1) ctx.fillText(t.toFixed(0)+'s',toX(t),MT+PH+12);
+  ctx.fillStyle='#555';ctx.textAlign='center';ctx.fillText('Time (s)',ML+PW/2,H-3);
+  ctx.save();ctx.translate(12,MT+PH/2);ctx.rotate(-Math.PI/2);ctx.fillText('x (m)',0,0);ctx.restore();
+  ctx.fillStyle='#555';ctx.textAlign='left';ctx.font='10px monospace';
+  ctx.fillText('x(t)  [linearized cascade step response]',ML+4,MT+12);
+}
+
 // ─── Simulation canvas ────────────────────────────────────────────────────────
 function renderSim(){
   const cv=document.getElementById('sim'),ctx=cv.getContext('2d');
-  const W=cv.width,H=cv.height,PX=90,oX=W/2,tY=Math.round(H*0.68),CW=56,CH=28;
+  const W=cv.width,H=cv.height,oX=W/2,tY=Math.round(H*0.68),CW=46,CH=24;
+  const PX=Math.min(90,Math.floor((W-80)/(2*TRACK_LIM)));
+  const beltPx=beltDist*PX; // convert meters→pixels for rotation
   const thSp=getThSp();
   ctx.fillStyle='#0b120b';ctx.fillRect(0,0,W,H);
   ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;
@@ -443,7 +578,7 @@ function renderSim(){
   ctx.beginPath();ctx.arc(mpX,mpY,motorR,0,Math.PI*2);
   ctx.fillStyle='#102010';ctx.fill();ctx.strokeStyle='#33ff66';ctx.lineWidth=2;ctx.stroke();
   for(let i=0;i<4;i++){
-    const a=beltDist/motorR+i*Math.PI/2;
+    const a=beltPx/motorR+i*Math.PI/2;
     ctx.beginPath();ctx.moveTo(mpX+Math.cos(a)*2,mpY+Math.sin(a)*2);
     ctx.lineTo(mpX+Math.cos(a)*(motorR-2),mpY+Math.sin(a)*(motorR-2));
     ctx.strokeStyle='#22aa44';ctx.lineWidth=1.5;ctx.stroke();
@@ -453,7 +588,7 @@ function renderSim(){
   // Idler pulley
   ctx.beginPath();ctx.arc(ipX,ipY,idlerR,0,Math.PI*2);
   ctx.fillStyle='#102010';ctx.fill();ctx.strokeStyle='#2a5a2a';ctx.lineWidth=1.5;ctx.stroke();
-  const iA=beltDist/idlerR;
+  const iA=beltPx/idlerR;
   ctx.beginPath();ctx.moveTo(ipX+Math.cos(iA)*(idlerR-2),ipY+Math.sin(iA)*(idlerR-2));
   ctx.lineTo(ipX-Math.cos(iA)*(idlerR-2),ipY-Math.sin(iA)*(idlerR-2));
   ctx.strokeStyle='#2a5a2a';ctx.lineWidth=1.5;ctx.stroke();
@@ -529,7 +664,7 @@ function loop(ts){
   if(!fallen){
     const steps=Math.round(dt/DT);
     for(let i=0;i<steps;i++){const F=pidStep();lastF=F;physicsStep(F);}
-    beltDist+=sim.xd*90*dt; // PX=90
+    beltDist+=sim.xd*dt; // meters
     thetaHistory.push(sim.th);
     if(thetaHistory.length>HIST_LEN) thetaHistory.shift();
     if(Math.abs(sim.th)>Math.PI/2||Math.abs(sim.x)>TRACK_LIM){fallen=true;fallenT=0;}
@@ -557,9 +692,32 @@ makeSlider('sl-cart',  'sv-cart',  v => v.toFixed(1)+' kg', v => { CART_MASS = v
 makeSlider('sl-pole',  'sv-pole',  v => v.toFixed(2)+' kg', v => { POLE_MASS = v; });
 makeSlider('sl-len',   'sv-len',   v => v.toFixed(2)+' m',  v => { POLE_HALF = v/2; });
 
+// ─── Canvas auto-sizing (ResizeObserver) ──────────────────────────────────────
+const canvasRO = new ResizeObserver(entries => {
+  for (const e of entries) {
+    const cv = e.target;
+    const w = Math.round(e.contentRect.width);
+    const h = Math.round(e.contentRect.height);
+    if (w < 1 || h < 1) continue;
+    cv.width = w; cv.height = h;
+    if (cv.id === 'sim') {
+      // Keep θ history plot same width
+      const pc = document.getElementById('plot');
+      pc.width = w;
+    }
+    if (cv.id === 'step') renderStepResp();
+    if (cv.id === 'outer-step') renderOuterStepResp();
+  }
+});
+canvasRO.observe(document.getElementById('sim'));
+canvasRO.observe(document.getElementById('step'));
+canvasRO.observe(document.getElementById('outer-step'));
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 stepData=computeStepResponse();
+outerStepData=computeOuterStepResponse();
 renderStepResp();
+renderOuterStepResp();
 requestAnimationFrame(loop);
 </script>
 </body>
