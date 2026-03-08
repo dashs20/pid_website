@@ -2,39 +2,60 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PID Inverted Pendulum</title>
+  <title>learnaboutpid.com</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #111; color: #eee;
+      background: #0a0f0a; color: #a0ffb0;
       font-family: 'Courier New', monospace;
       display: flex; flex-direction: column; align-items: center;
       min-height: 100vh; padding: 20px; gap: 12px;
     }
-    h1 { font-size: 1.3rem; letter-spacing: 3px; color: #88ccff; margin-top: 4px; }
-    canvas { border: 1px solid #2a2a2a; border-radius: 6px; display: block; }
+    h1 { font-size: 1.3rem; letter-spacing: 3px; color: #33ff66; margin-top: 4px; text-shadow: 0 0 8px #33ff6688; }
+    canvas { border: 1px solid #1a3a1a; border-radius: 6px; display: block; }
     #controls { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; justify-content: center; }
     .knob-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-    .knob-group label { font-size: 0.68rem; letter-spacing: 2px; color: #6699cc; }
-    .knob-group .val { font-size: 0.85rem; color: #ddd; min-width: 64px; text-align: center; }
+    .knob-group label { font-size: 0.68rem; letter-spacing: 2px; color: #4a8a5a; }
+    .knob-group .val { font-size: 0.85rem; color: #a0ffb0; min-width: 64px; text-align: center; }
     canvas.knob { cursor: ns-resize; display: block; }
-    .divider { width: 1px; height: 80px; background: #2a2a2a; }
+    .divider { width: 1px; height: 80px; background: #1a3a1a; }
     #buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
     button {
-      padding: 7px 14px; background: #1a1a2e; border: 1px solid #336;
-      color: #88aaff; border-radius: 5px; cursor: pointer;
+      padding: 7px 14px; background: #0d1f0d; border: 1px solid #2a5a2a;
+      color: #4af074; border-radius: 5px; cursor: pointer;
       font-family: inherit; font-size: 0.78rem; letter-spacing: 1px;
     }
-    button:hover { background: #222244; border-color: #88aaff; }
-    button.active { background: #1a3a1a; border-color: #4a8; color: #4a8; }
-    #status { font-size: 0.78rem; color: #f84; height: 18px; letter-spacing: 1px; }
+    button:hover { background: #122012; border-color: #33ff66; color: #33ff66; }
+    button.active { background: #0d2a0d; border-color: #33ff66; color: #33ff66; }
+    #status { font-size: 0.78rem; color: #ff8844; height: 18px; letter-spacing: 1px; }
 
     .plot-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .plot-label { font-size: 0.65rem; letter-spacing: 2px; color: #556; text-align: center; }
+    .plot-label { font-size: 0.65rem; letter-spacing: 2px; color: #2a5a2a; text-align: center; }
+
+    /* Physics sliders */
+    #phys-controls {
+      display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; align-items: flex-start;
+      border: 1px solid #1a3a1a; border-radius: 6px; padding: 10px 18px; background: #0c170c;
+    }
+    .slider-group { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 120px; }
+    .slider-group label { font-size: 0.62rem; letter-spacing: 2px; color: #4a8a5a; }
+    .slider-group .sval { font-size: 0.82rem; color: #a0ffb0; }
+    input[type=range] {
+      -webkit-appearance: none; width: 120px; height: 4px;
+      background: #1a3a1a; border-radius: 2px; outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px;
+      background: #33ff66; border-radius: 50%; box-shadow: 0 0 4px #33ff6688;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 14px; height: 14px; background: #33ff66; border-radius: 50%; border: none;
+    }
   </style>
 </head>
 <body>
-<h1>PID INVERTED PENDULUM</h1>
+<h1>learnaboutpid.com</h1>
+<div style="font-size:0.7rem; letter-spacing:3px; color:#2a6a3a; margin-top:-6px;">By Quantum Projects</div>
 <canvas id="sim"  width="720" height="285"></canvas>
 <canvas id="plot" width="720" height="88"></canvas>
 
@@ -67,21 +88,44 @@
     <button id="btn-posmode">MODE: ANGLE</button>
   </div>
 </div>
+<div id="phys-controls">
+  <div class="slider-group">
+    <label>MAX FORCE (N)</label>
+    <input type="range" id="sl-force" min="5" max="200" step="1" value="60">
+    <div class="sval" id="sv-force">60 N</div>
+  </div>
+  <div class="slider-group">
+    <label>CART MASS (kg)</label>
+    <input type="range" id="sl-cart" min="0.2" max="5" step="0.1" value="1.0">
+    <div class="sval" id="sv-cart">1.0 kg</div>
+  </div>
+  <div class="slider-group">
+    <label>POLE MASS (kg)</label>
+    <input type="range" id="sl-pole" min="0.01" max="2" step="0.01" value="0.15">
+    <div class="sval" id="sv-pole">0.15 kg</div>
+  </div>
+  <div class="slider-group">
+    <label>POLE LENGTH (m)</label>
+    <input type="range" id="sl-len" min="0.1" max="2" step="0.05" value="0.8">
+    <div class="sval" id="sv-len">0.80 m</div>
+  </div>
+</div>
+
 <div id="pos-controls" style="display:none; flex-direction:column; align-items:center; gap:6px; width:100%;">
-  <div style="font-size:0.65rem; letter-spacing:3px; color:#fa6; margin-top:4px;">OUTER LOOP — POSITION CONTROLLER</div>
+  <div style="font-size:0.65rem; letter-spacing:3px; color:#c8ff44; margin-top:4px;">OUTER LOOP — POSITION CONTROLLER</div>
   <div style="display:flex; gap:22px; align-items:center; flex-wrap:wrap; justify-content:center;">
     <div class="knob-group">
-      <label style="color:#fa6;">P GAIN</label>
+      <label style="color:#c8ff44;">P GAIN</label>
       <canvas class="knob" id="pkp" width="88" height="88"></canvas>
       <div class="val" id="vpkp">—</div>
     </div>
     <div class="knob-group">
-      <label style="color:#fa6;">I GAIN</label>
+      <label style="color:#c8ff44;">I GAIN</label>
       <canvas class="knob" id="pki" width="88" height="88"></canvas>
       <div class="val" id="vpki">—</div>
     </div>
     <div class="knob-group">
-      <label style="color:#fa6;">D GAIN</label>
+      <label style="color:#c8ff44;">D GAIN</label>
       <canvas class="knob" id="pkd" width="88" height="88"></canvas>
       <div class="val" id="vpkd">—</div>
     </div>
@@ -97,9 +141,9 @@
 
 
 <script>
-// ─── Physics constants ────────────────────────────────────────────────────────
-const CART_MASS=1.0, POLE_MASS=0.15, POLE_HALF=0.4, GRAVITY=9.81;
-const DT=1/500, FORCE_MAX=60, TRACK_LIM=2.8;
+// ─── Physics constants (mutable via sliders) ──────────────────────────────────
+const GRAVITY=9.81, DT=1/500, TRACK_LIM=2.8;
+let CART_MASS=1.0, POLE_MASS=0.15, POLE_HALF=0.4, FORCE_MAX=60;
 
 // ─── PID + mode ───────────────────────────────────────────────────────────────
 const pid = { Kp:120, Ki:1.0, Kd:22, setpoint:0 };
@@ -110,13 +154,13 @@ let xTarget  = 0;          // x position target (meters) — used in posMode
 // ─── Simulation state ─────────────────────────────────────────────────────────
 let sim, integral, prevErr, lastF=0, fallen, fallenT;
 let posIntegral=0, posPrevErr=0;
-let thetaHistory=[];
+let thetaHistory=[], beltDist=0;
 const HIST_LEN=720;
 
 function resetSim(tilt=0.08) {
   sim={x:0,xd:0,th:tilt,thd:0};
   integral=0; prevErr=tilt; lastF=0;
-  posIntegral=0; posPrevErr=0;
+  posIntegral=0; posPrevErr=0; beltDist=0;
   fallen=false; fallenT=0; thetaHistory=[];
   document.getElementById('status').textContent='';
 }
@@ -142,7 +186,7 @@ function getThSp() {
     posIntegral = Math.max(-2, Math.min(2, posIntegral));
     const deriv = (err - posPrevErr) / DT;
     posPrevErr = err;
-    return Math.max(-0.4, Math.min(0.4, posPid.Kp*err + posPid.Ki*posIntegral + posPid.Kd*deriv));
+    return Math.max(-Math.PI/2, Math.min(Math.PI/2, posPid.Kp*err + posPid.Ki*posIntegral + posPid.Kd*deriv));
   }
   return pid.setpoint;
 }
@@ -227,9 +271,9 @@ function makeKnob(id,dispId,opts){
     const R=Math.min(W,H)/2-8,A0=Math.PI*0.75,ARC=Math.PI*1.5;
     const Av=A0+toN(value)*ARC,col=opts.color||'#4af';
     ctx.clearRect(0,0,W,H);
-    ctx.beginPath();ctx.arc(cx,cy,R,A0,A0+ARC);ctx.strokeStyle='#252525';ctx.lineWidth=5;ctx.lineCap='round';ctx.stroke();
+    ctx.beginPath();ctx.arc(cx,cy,R,A0,A0+ARC);ctx.strokeStyle='#1a3a1a';ctx.lineWidth=5;ctx.lineCap='round';ctx.stroke();
     ctx.beginPath();ctx.arc(cx,cy,R,A0,Av);ctx.strokeStyle=col;ctx.lineWidth=5;ctx.stroke();
-    ctx.beginPath();ctx.arc(cx,cy,R-9,0,Math.PI*2);ctx.fillStyle='#1e1e1e';ctx.fill();ctx.strokeStyle='#2e2e2e';ctx.lineWidth=2;ctx.stroke();
+    ctx.beginPath();ctx.arc(cx,cy,R-9,0,Math.PI*2);ctx.fillStyle='#0d1a0d';ctx.fill();ctx.strokeStyle='#1a3a1a';ctx.lineWidth=2;ctx.stroke();
     const ix=cx+(R-15)*Math.cos(Av),iy=cy+(R-15)*Math.sin(Av);
     ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(ix,iy);ctx.strokeStyle='#ccc';ctx.lineWidth=2;ctx.stroke();
     ctx.beginPath();ctx.arc(ix,iy,3,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
@@ -243,16 +287,16 @@ function makeKnob(id,dispId,opts){
 }
 
 // ─── Knob inits ───────────────────────────────────────────────────────────────
-makeKnob('kp','vp',{min:1,max:500,init:pid.Kp,log:true,color:'#4af',fmt:v=>v.toFixed(1),
+makeKnob('kp','vp',{min:1,max:500,init:pid.Kp,log:true,color:'#33ff66',fmt:v=>v.toFixed(1),
   onSet:v=>{pid.Kp=v;scheduleAnalysis();}
 });
-makeKnob('ki','vi',{min:0,max:15,init:pid.Ki,log:false,color:'#4af',fmt:v=>v.toFixed(2),
+makeKnob('ki','vi',{min:0,max:15,init:pid.Ki,log:false,color:'#33ff66',fmt:v=>v.toFixed(2),
   onSet:v=>{pid.Ki=v;integral=0;scheduleAnalysis();}
 });
-makeKnob('kd','vd',{min:0,max:80,init:pid.Kd,log:false,color:'#4af',fmt:v=>v.toFixed(1),
+makeKnob('kd','vd',{min:0,max:80,init:pid.Kd,log:false,color:'#33ff66',fmt:v=>v.toFixed(1),
   onSet:v=>{pid.Kd=v;scheduleAnalysis();}
 });
-const spKnob=makeKnob('ksp','vsp',{min:-20,max:20,init:0,log:false,color:'#fa6',
+const spKnob=makeKnob('ksp','vsp',{min:-20,max:20,init:0,log:false,color:'#c8ff44',
   fmt:v=>posMode?v.toFixed(2)+' m':(v>=0?'+':'')+v.toFixed(1)+'°',
   onSet:v=>{
     if(posMode){ xTarget=v*(2/20); }
@@ -261,13 +305,13 @@ const spKnob=makeKnob('ksp','vsp',{min:-20,max:20,init:0,log:false,color:'#fa6',
   }
 });
 
-makeKnob('pkp','vpkp',{min:0.01,max:5,init:posPid.Kp,log:true,color:'#fa6',fmt:v=>v.toFixed(3),
+makeKnob('pkp','vpkp',{min:0.01,max:5,init:posPid.Kp,log:true,color:'#c8ff44',fmt:v=>v.toFixed(3),
   onSet:v=>{posPid.Kp=v;}
 });
-makeKnob('pki','vpki',{min:0,max:3,init:posPid.Ki,log:false,color:'#fa6',fmt:v=>v.toFixed(3),
+makeKnob('pki','vpki',{min:0,max:3,init:posPid.Ki,log:false,color:'#c8ff44',fmt:v=>v.toFixed(3),
   onSet:v=>{posPid.Ki=v;posIntegral=0;}
 });
-makeKnob('pkd','vpkd',{min:0,max:2,init:posPid.Kd,log:false,color:'#fa6',fmt:v=>v.toFixed(3),
+makeKnob('pkd','vpkd',{min:0,max:2,init:posPid.Kd,log:false,color:'#c8ff44',fmt:v=>v.toFixed(3),
   onSet:v=>{posPid.Kd=v;}
 });
 
@@ -294,7 +338,7 @@ function renderStepResp(){
   const cv=document.getElementById('step'),ctx=cv.getContext('2d');
   const W=cv.width,H=cv.height,ML=50,MR=15,MT=12,MB=28;
   const PW=W-ML-MR,PH=H-MT-MB;
-  ctx.fillStyle='#131313';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0b120b';ctx.fillRect(0,0,W,H);
 
   const r=Math.PI/180; // 1° in rad
   const tMax=stepData[stepData.length-1].t;
@@ -318,13 +362,13 @@ function renderStepResp(){
 
   // ±2% settling band
   const band=0.02*r;
-  ctx.fillStyle='rgba(68,170,255,0.05)';
+  ctx.fillStyle='rgba(51,255,102,0.05)';
   ctx.fillRect(ML,toY(r+band),PW,toY(r-band)-toY(r+band));
 
   // θ(t) curve
   ctx.beginPath();
   stepData.forEach((d,i)=>{const px=toX(d.t),py=toY(d.theta);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});
-  ctx.strokeStyle='#4af';ctx.lineWidth=2;ctx.stroke();
+  ctx.strokeStyle='#33ff66';ctx.lineWidth=2;ctx.stroke();
 
   // Overshoot marker
   const maxTh=Math.max(...allTh), maxIdx=allTh.indexOf(maxTh);
@@ -345,7 +389,7 @@ function renderStepResp(){
     const px=toX(settleT);
     ctx.beginPath();ctx.moveTo(px,MT);ctx.lineTo(px,MT+PH);
     ctx.strokeStyle='rgba(68,170,255,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
-    ctx.fillStyle='#4af';ctx.font='9px monospace';ctx.textAlign='left';
+    ctx.fillStyle='#33ff66';ctx.font='9px monospace';ctx.textAlign='left';
     ctx.fillText(`ts=${settleT.toFixed(2)}s`,px+3,MT+12);
   }
 
@@ -365,46 +409,115 @@ function renderSim(){
   const cv=document.getElementById('sim'),ctx=cv.getContext('2d');
   const W=cv.width,H=cv.height,PX=90,oX=W/2,tY=Math.round(H*0.68),CW=56,CH=28;
   const thSp=getThSp();
-  ctx.fillStyle='#131313';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0b120b';ctx.fillRect(0,0,W,H);
   ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;
   for(let gx=0;gx<W;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
   for(let gy=0;gy<H;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
   const tL=oX-TRACK_LIM*PX,tR=oX+TRACK_LIM*PX;
+
+  // ── Motor + belt ────────────────────────────────────────────────────────────
+  const motorR=Math.min(22,8+(FORCE_MAX/60)*8);
+  const mpX=tL, mpY=tY+motorR;           // drive pulley center (sits just below track)
+  const idlerR=8, ipX=tR, ipY=tY+idlerR; // idler pulley center
+  const mBodyW=Math.min(72,32+FORCE_MAX*0.18);
+  const mBodyH=Math.min(30,14+FORCE_MAX*0.07);
+  const mBodyTop=mpY+motorR+4;
+
+  // Motor body
+  ctx.fillStyle='#0c1a0c';ctx.strokeStyle='#2a5a2a';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.rect(mpX-mBodyW/2,mBodyTop,mBodyW,mBodyH);ctx.fill();ctx.stroke();
+  const nCoils=Math.max(2,Math.floor(mBodyH/7));
+  for(let i=1;i<nCoils;i++){
+    const ly=mBodyTop+(mBodyH/nCoils)*i;
+    ctx.beginPath();ctx.moveTo(mpX-mBodyW/2+4,ly);ctx.lineTo(mpX+mBodyW/2-4,ly);
+    ctx.strokeStyle='#1a3a1a';ctx.lineWidth=1;ctx.stroke();
+  }
+  ctx.fillStyle='#2a5a2a';ctx.font='7px monospace';ctx.textAlign='center';
+  ctx.fillText('MOTOR',mpX,mBodyTop+mBodyH-3);
+
+  // Output shaft (body → pulley)
+  ctx.strokeStyle='#2a5a2a';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(mpX,mpY+motorR);ctx.lineTo(mpX,mBodyTop);ctx.stroke();
+
+  // Drive pulley
+  ctx.beginPath();ctx.arc(mpX,mpY,motorR,0,Math.PI*2);
+  ctx.fillStyle='#102010';ctx.fill();ctx.strokeStyle='#33ff66';ctx.lineWidth=2;ctx.stroke();
+  for(let i=0;i<4;i++){
+    const a=beltDist/motorR+i*Math.PI/2;
+    ctx.beginPath();ctx.moveTo(mpX+Math.cos(a)*2,mpY+Math.sin(a)*2);
+    ctx.lineTo(mpX+Math.cos(a)*(motorR-2),mpY+Math.sin(a)*(motorR-2));
+    ctx.strokeStyle='#22aa44';ctx.lineWidth=1.5;ctx.stroke();
+  }
+  ctx.beginPath();ctx.arc(mpX,mpY,3,0,Math.PI*2);ctx.fillStyle='#33ff66';ctx.fill();
+
+  // Idler pulley
+  ctx.beginPath();ctx.arc(ipX,ipY,idlerR,0,Math.PI*2);
+  ctx.fillStyle='#102010';ctx.fill();ctx.strokeStyle='#2a5a2a';ctx.lineWidth=1.5;ctx.stroke();
+  const iA=beltDist/idlerR;
+  ctx.beginPath();ctx.moveTo(ipX+Math.cos(iA)*(idlerR-2),ipY+Math.sin(iA)*(idlerR-2));
+  ctx.lineTo(ipX-Math.cos(iA)*(idlerR-2),ipY-Math.sin(iA)*(idlerR-2));
+  ctx.strokeStyle='#2a5a2a';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(ipX,ipY,2,0,Math.PI*2);ctx.fillStyle='#2a5a2a';ctx.fill();
+
+  // Belt (top strand at track level)
+  ctx.beginPath();ctx.moveTo(mpX,tY);ctx.lineTo(ipX,tY);
+  ctx.strokeStyle='#1a4a1a';ctx.lineWidth=2;ctx.stroke();
+
+  // Track rail
   ctx.beginPath();ctx.moveTo(tL-10,tY);ctx.lineTo(tR+10,tY);ctx.strokeStyle='#333';ctx.lineWidth=4;ctx.stroke();
   ctx.strokeStyle='#7a3a2a';ctx.lineWidth=2;ctx.setLineDash([5,4]);
   for(const lx of[tL,tR]){ctx.beginPath();ctx.moveTo(lx,tY-50);ctx.lineTo(lx,tY+12);ctx.stroke();}
   ctx.setLineDash([]);
-  // Position target indicator (pos mode)
-  if(posMode){const xtPx=oX+xTarget*PX;ctx.beginPath();ctx.moveTo(xtPx,tY-60);ctx.lineTo(xtPx,tY+12);ctx.strokeStyle='rgba(255,160,60,0.6)';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);}
+
+  // Position target indicator
+  if(posMode){const xtPx=oX+xTarget*PX;ctx.beginPath();ctx.moveTo(xtPx,tY-60);ctx.lineTo(xtPx,tY+12);ctx.strokeStyle='rgba(200,255,68,0.6)';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);}
+
+  // Cart + wheels
   const cX=oX+sim.x*PX,cTop=tY-CH;
-  for(const wx of[cX-16,cX+16]){ctx.beginPath();ctx.arc(wx,tY,7,0,Math.PI*2);ctx.fillStyle='#333';ctx.fill();ctx.strokeStyle='#555';ctx.lineWidth=2;ctx.stroke();}
+  for(const wx of[cX-16,cX+16]){ctx.beginPath();ctx.arc(wx,tY,7,0,Math.PI*2);ctx.fillStyle='#1a2a1a';ctx.fill();ctx.strokeStyle='#3a6a3a';ctx.lineWidth=2;ctx.stroke();}
   ctx.beginPath();ctx.rect(cX-CW/2,cTop,CW,CH);
-  ctx.fillStyle=fallen?'#3a1a1a':'#1a2f4a';ctx.fill();ctx.strokeStyle=fallen?'#f54':'#4af';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=fallen?'#3a1a1a':'#0d2a0d';ctx.fill();ctx.strokeStyle=fallen?'#f54':'#33ff66';ctx.lineWidth=2;ctx.stroke();
+
+  // Pole shadow + pole
   const polePx=POLE_HALF*2*PX;
   const tipX=cX+polePx*Math.sin(sim.th),tipY=cTop-polePx*Math.cos(sim.th);
   ctx.beginPath();ctx.moveTo(cX,cTop);ctx.lineTo(tipX,tipY);ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=10;ctx.lineCap='round';ctx.stroke();
   const pg=ctx.createLinearGradient(cX,cTop,tipX,tipY);
-  pg.addColorStop(0,'#777');pg.addColorStop(1,fallen?'#f96':'#aaddff');
+  pg.addColorStop(0,'#666');pg.addColorStop(1,fallen?'#f96':'#88ffaa');
   ctx.beginPath();ctx.moveTo(cX,cTop);ctx.lineTo(tipX,tipY);ctx.strokeStyle=pg;ctx.lineWidth=7;ctx.stroke();
-  if(Math.abs(thSp)>0.002){const gL=polePx*0.65;ctx.beginPath();ctx.moveTo(cX,cTop);ctx.lineTo(cX+gL*Math.sin(thSp),cTop-gL*Math.cos(thSp));ctx.strokeStyle='rgba(255,160,60,0.4)';ctx.lineWidth=3;ctx.setLineDash([6,5]);ctx.stroke();ctx.setLineDash([]);}
+
+  // Setpoint ghost
+  if(Math.abs(thSp)>0.002){const gL=polePx*0.65;ctx.beginPath();ctx.moveTo(cX,cTop);ctx.lineTo(cX+gL*Math.sin(thSp),cTop-gL*Math.cos(thSp));ctx.strokeStyle='rgba(200,255,68,0.35)';ctx.lineWidth=3;ctx.setLineDash([6,5]);ctx.stroke();ctx.setLineDash([]);}
+
+  // Pivot
   ctx.beginPath();ctx.arc(cX,cTop,5,0,Math.PI*2);ctx.fillStyle='#aaa';ctx.fill();
-  ctx.beginPath();ctx.arc(tipX,tipY,5,0,Math.PI*2);ctx.fillStyle=fallen?'#f54':'#4af';ctx.fill();
-  ctx.fillStyle='#555';ctx.font='12px monospace';ctx.textAlign='left';
+
+  // Tip mass — radius scales with POLE_MASS
+  const bobR=Math.max(4,Math.min(20,4+POLE_MASS*8));
+  ctx.beginPath();ctx.arc(tipX,tipY,bobR,0,Math.PI*2);
+  ctx.fillStyle=fallen?'rgba(255,85,68,0.25)':'rgba(51,255,102,0.15)';ctx.fill();
+  ctx.strokeStyle=fallen?'#f54':'#33ff66';ctx.lineWidth=2;ctx.stroke();
+  // Shine
+  ctx.beginPath();ctx.arc(tipX-bobR*0.28,tipY-bobR*0.28,bobR*0.22,0,Math.PI*2);
+  ctx.fillStyle=fallen?'rgba(255,160,120,0.4)':'rgba(200,255,220,0.45)';ctx.fill();
+
+  // HUD
+  ctx.fillStyle='#4a8a5a';ctx.font='12px monospace';ctx.textAlign='left';
   ctx.fillText(`θ = ${(sim.th*180/Math.PI).toFixed(2)}°`,10,20);
   ctx.fillText(`x = ${sim.x.toFixed(3)} m`,10,36);
   ctx.fillText(`F = ${lastF.toFixed(1)} N`,10,52);
-  if(posMode){ctx.fillStyle='#6a4';ctx.fillText(`x_sp = ${xTarget.toFixed(2)} m`,10,68);}
-  if(fallen){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#f54';ctx.font='bold 26px monospace';ctx.textAlign='center';ctx.fillText('FALLEN',W/2,H/2-14);ctx.fillStyle='#888';ctx.font='14px monospace';ctx.fillText('resetting...',W/2,H/2+14);}
+  if(posMode){ctx.fillStyle='#8abb44';ctx.fillText(`x_sp = ${xTarget.toFixed(2)} m`,10,68);}
+  if(fallen){ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#f54';ctx.font='bold 26px monospace';ctx.textAlign='center';ctx.fillText('FALLEN',W/2,H/2-14);ctx.fillStyle='#888';ctx.font='14px monospace';ctx.fillText('resetting...',W/2,H/2+14);}
 }
 
 function renderPlot(){
   const cv=document.getElementById('plot'),ctx=cv.getContext('2d');
   const W=cv.width,H=cv.height,mY=H/2,scY=mY/(25*Math.PI/180);
-  ctx.fillStyle='#131313';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0b120b';ctx.fillRect(0,0,W,H);
   ctx.beginPath();ctx.moveTo(0,mY);ctx.lineTo(W,mY);ctx.strokeStyle='#222';ctx.lineWidth=1;ctx.stroke();
   for(const deg of[-10,10]){const ry=mY-(deg*Math.PI/180)*scY;ctx.beginPath();ctx.moveTo(0,ry);ctx.lineTo(W,ry);ctx.strokeStyle='#1e1e1e';ctx.lineWidth=1;ctx.setLineDash([3,7]);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#383838';ctx.font='10px monospace';ctx.textAlign='left';ctx.fillText(`${deg>0?'+':''}${deg}°`,3,ry-2);}
   const spY=mY-getThSp()*scY;ctx.beginPath();ctx.moveTo(0,spY);ctx.lineTo(W,spY);ctx.strokeStyle='rgba(255,160,60,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,5]);ctx.stroke();ctx.setLineDash([]);
-  if(thetaHistory.length>1){ctx.beginPath();thetaHistory.forEach((th,i)=>{const px=(i/HIST_LEN)*W,py=mY-th*scY;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});ctx.strokeStyle='#3a8fc0';ctx.lineWidth=1.5;ctx.stroke();}
+  if(thetaHistory.length>1){ctx.beginPath();thetaHistory.forEach((th,i)=>{const px=(i/HIST_LEN)*W,py=mY-th*scY;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});ctx.strokeStyle='#22cc44';ctx.lineWidth=1.5;ctx.stroke();}
   ctx.fillStyle='#2a2a2a';ctx.font='11px monospace';ctx.textAlign='right';ctx.fillText('θ history',W-6,14);
 }
 
@@ -416,6 +529,7 @@ function loop(ts){
   if(!fallen){
     const steps=Math.round(dt/DT);
     for(let i=0;i<steps;i++){const F=pidStep();lastF=F;physicsStep(F);}
+    beltDist+=sim.xd*90*dt; // PX=90
     thetaHistory.push(sim.th);
     if(thetaHistory.length>HIST_LEN) thetaHistory.shift();
     if(Math.abs(sim.th)>Math.PI/2||Math.abs(sim.x)>TRACK_LIM){fallen=true;fallenT=0;}
@@ -431,6 +545,17 @@ function loop(ts){
 // ─── Buttons ──────────────────────────────────────────────────────────────────
 document.getElementById('btn-reset').addEventListener('click',()=>resetSim());
 document.getElementById('btn-nudge').addEventListener('click',()=>{sim.thd+=(Math.random()-0.5)*1.2;sim.xd+=(Math.random()-0.5)*0.5;});
+
+// ─── Physics sliders ──────────────────────────────────────────────────────────
+function makeSlider(id, valId, fmt, onSet) {
+  const sl = document.getElementById(id), vl = document.getElementById(valId);
+  sl.addEventListener('input', () => { onSet(parseFloat(sl.value)); vl.textContent = fmt(parseFloat(sl.value)); resetSim(); scheduleAnalysis(); });
+  vl.textContent = fmt(parseFloat(sl.value));
+}
+makeSlider('sl-force', 'sv-force', v => v.toFixed(0)+' N',  v => { FORCE_MAX = v; });
+makeSlider('sl-cart',  'sv-cart',  v => v.toFixed(1)+' kg', v => { CART_MASS = v; });
+makeSlider('sl-pole',  'sv-pole',  v => v.toFixed(2)+' kg', v => { POLE_MASS = v; });
+makeSlider('sl-len',   'sv-len',   v => v.toFixed(2)+' m',  v => { POLE_HALF = v/2; });
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 stepData=computeStepResponse();
