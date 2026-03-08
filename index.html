@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PID Inverted Pendulum</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111; color: #eee;
+      font-family: 'Courier New', monospace;
+      display: flex; flex-direction: column; align-items: center;
+      min-height: 100vh; padding: 20px; gap: 12px;
+    }
+    h1 { font-size: 1.3rem; letter-spacing: 3px; color: #88ccff; margin-top: 4px; }
+    canvas { border: 1px solid #2a2a2a; border-radius: 6px; display: block; }
+    #controls { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .knob-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .knob-group label { font-size: 0.68rem; letter-spacing: 2px; color: #6699cc; }
+    .knob-group .val { font-size: 0.85rem; color: #ddd; min-width: 64px; text-align: center; }
+    canvas.knob { cursor: ns-resize; display: block; }
+    .divider { width: 1px; height: 80px; background: #2a2a2a; }
+    #buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    button {
+      padding: 7px 14px; background: #1a1a2e; border: 1px solid #336;
+      color: #88aaff; border-radius: 5px; cursor: pointer;
+      font-family: inherit; font-size: 0.78rem; letter-spacing: 1px;
+    }
+    button:hover { background: #222244; border-color: #88aaff; }
+    button.active { background: #1a3a1a; border-color: #4a8; color: #4a8; }
+    #status { font-size: 0.78rem; color: #f84; height: 18px; letter-spacing: 1px; }
+
+    .plot-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .plot-label { font-size: 0.65rem; letter-spacing: 2px; color: #556; text-align: center; }
+  </style>
+</head>
+<body>
+<h1>PID INVERTED PENDULUM</h1>
+<canvas id="sim"  width="720" height="285"></canvas>
+<canvas id="plot" width="720" height="88"></canvas>
+
+<div id="controls">
+  <div class="knob-group">
+    <label>P GAIN</label>
+    <canvas class="knob" id="kp" width="88" height="88"></canvas>
+    <div class="val" id="vp">—</div>
+  </div>
+  <div class="knob-group">
+    <label>I GAIN</label>
+    <canvas class="knob" id="ki" width="88" height="88"></canvas>
+    <div class="val" id="vi">—</div>
+  </div>
+  <div class="knob-group">
+    <label>D GAIN</label>
+    <canvas class="knob" id="kd" width="88" height="88"></canvas>
+    <div class="val" id="vd">—</div>
+  </div>
+  <div class="divider"></div>
+  <div class="knob-group">
+    <label id="sp-label">SETPOINT (°)</label>
+    <canvas class="knob" id="ksp" width="88" height="88"></canvas>
+    <div class="val" id="vsp">—</div>
+  </div>
+  <div class="divider"></div>
+  <div id="buttons">
+    <button id="btn-reset">RESET</button>
+    <button id="btn-nudge">NUDGE</button>
+    <button id="btn-posmode">MODE: ANGLE</button>
+  </div>
+</div>
+<div id="pos-controls" style="display:none; flex-direction:column; align-items:center; gap:6px; width:100%;">
+  <div style="font-size:0.65rem; letter-spacing:3px; color:#fa6; margin-top:4px;">OUTER LOOP — POSITION CONTROLLER</div>
+  <div style="display:flex; gap:22px; align-items:center; flex-wrap:wrap; justify-content:center;">
+    <div class="knob-group">
+      <label style="color:#fa6;">P GAIN</label>
+      <canvas class="knob" id="pkp" width="88" height="88"></canvas>
+      <div class="val" id="vpkp">—</div>
+    </div>
+    <div class="knob-group">
+      <label style="color:#fa6;">I GAIN</label>
+      <canvas class="knob" id="pki" width="88" height="88"></canvas>
+      <div class="val" id="vpki">—</div>
+    </div>
+    <div class="knob-group">
+      <label style="color:#fa6;">D GAIN</label>
+      <canvas class="knob" id="pkd" width="88" height="88"></canvas>
+      <div class="val" id="vpkd">—</div>
+    </div>
+  </div>
+</div>
+<div id="status"></div>
+
+<!-- Step response -->
+<div class="plot-wrap">
+  <div class="plot-label">STEP RESPONSE  (linearized, 1° θ setpoint step)</div>
+  <canvas id="step" width="720" height="150"></canvas>
+</div>
+
+
+<script>
+// ─── Physics constants ────────────────────────────────────────────────────────
+const CART_MASS=1.0, POLE_MASS=0.15, POLE_HALF=0.4, GRAVITY=9.81;
+const DT=1/500, FORCE_MAX=60, TRACK_LIM=2.8;
+
+// ─── PID + mode ───────────────────────────────────────────────────────────────
+const pid = { Kp:120, Ki:1.0, Kd:22, setpoint:0 };
+const posPid = { Kp:0.5, Ki:0.0, Kd:0.1 };
+let posMode = false;       // position controller mode
+let xTarget  = 0;          // x position target (meters) — used in posMode
+
+// ─── Simulation state ─────────────────────────────────────────────────────────
+let sim, integral, prevErr, lastF=0, fallen, fallenT;
+let posIntegral=0, posPrevErr=0;
+let thetaHistory=[];
+const HIST_LEN=720;
+
+function resetSim(tilt=0.08) {
+  sim={x:0,xd:0,th:tilt,thd:0};
+  integral=0; prevErr=tilt; lastF=0;
+  posIntegral=0; posPrevErr=0;
+  fallen=false; fallenT=0; thetaHistory=[];
+  document.getElementById('status').textContent='';
+}
+resetSim();
+
+// ─── Physics ──────────────────────────────────────────────────────────────────
+function physicsStep(F) {
+  F=Math.max(-FORCE_MAX,Math.min(FORCE_MAX,F));
+  const {th,thd}=sim, M=CART_MASS,m=POLE_MASS,L=POLE_HALF,g=GRAVITY;
+  const s=Math.sin(th),c=Math.cos(th);
+  const den=L*(4/3-m*c*c/(M+m));
+  const tmp=(F+m*L*thd*thd*s)/(M+m);
+  const thdd=(g*s-c*tmp)/den, xdd=tmp-m*L*thdd*c/(M+m);
+  sim.thd+=thdd*DT; sim.th+=sim.thd*DT;
+  sim.xd+=xdd*DT;   sim.x+=sim.xd*DT;
+}
+
+// ─── PID step ─────────────────────────────────────────────────────────────────
+function getThSp() {
+  if (posMode) {
+    const err = xTarget - sim.x;
+    posIntegral += err * DT;
+    posIntegral = Math.max(-2, Math.min(2, posIntegral));
+    const deriv = (err - posPrevErr) / DT;
+    posPrevErr = err;
+    return Math.max(-0.4, Math.min(0.4, posPid.Kp*err + posPid.Ki*posIntegral + posPid.Kd*deriv));
+  }
+  return pid.setpoint;
+}
+
+function pidStep() {
+  const thSp = getThSp();
+  const err = sim.th - thSp;
+  integral += err*DT;
+  integral = Math.max(-8,Math.min(8,integral));
+  const deriv=(err-prevErr)/DT; prevErr=err;
+  return pid.Kp*err + pid.Ki*integral + pid.Kd*deriv;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LINEAR ANALYSIS
+// ═══════════════════════════════════════════════════════════════════════════════
+function linCoeffs() {
+  const M=CART_MASS,m=POLE_MASS,L=POLE_HALF,g=GRAVITY;
+  const Mt=M+m, d0=L*(4/3-m/Mt);
+  const Ath=g/d0, Bth=-1/(Mt*d0);
+  const Axth=-m*g*L/(Mt*d0), Bx=(1/Mt)*(1-m*L*Bth);
+  return {Ath,Bth,Axth,Bx};
+}
+
+// 5×5 augmented CL matrix: [x,ẋ,θ,θ̇,∫θ]
+function buildAcl(Kp,Ki,Kd) {
+  const {Ath,Bth,Axth,Bx}=linCoeffs();
+  return [
+    [0,1,0,0,0],
+    [0,0,Axth+Bx*Kp,Bx*Kd,Bx*Ki],
+    [0,0,0,1,0],
+    [0,0,Ath+Bth*Kp,Bth*Kd,Bth*Ki],
+    [0,0,1,0,0],
+  ];
+}
+
+
+// ─── Step response (linearized) ──────────────────────────────────────────────
+// Step in θ setpoint: z_dot = A_cl·z + B_r·r, r=1°
+function computeStepResponse() {
+  const {Bx,Bth}=linCoeffs();
+  const A=buildAcl(pid.Kp,pid.Ki,pid.Kd);
+  const Br=[0,-Bx*pid.Kp,0,-Bth*pid.Kp,-1];
+  const r=Math.PI/180; // 1° step
+  const dt=0.002, T=5.0, N=Math.floor(T/dt);
+  let z=[0,0,0,0,0];
+  const pts=[];
+  for(let i=0;i<N;i++){
+    const zdot=z.map((_,ri)=>A[ri].reduce((s,a,j)=>s+a*z[j],0)+Br[ri]*r);
+    z=z.map((zi,i)=>zi+zdot[i]*dt);
+    if(i%5===0) pts.push({t:i*dt, theta:z[2], x:z[0]});
+  }
+  return pts;
+}
+
+// ─── Cached analysis data ─────────────────────────────────────────────────────
+let stepData=null;
+let analysisTimer=null;
+
+function scheduleAnalysis(){
+  clearTimeout(analysisTimer);
+  analysisTimer=setTimeout(()=>{
+    stepData=computeStepResponse();
+    renderStepResp();
+  },130);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// KNOB WIDGET
+// ═══════════════════════════════════════════════════════════════════════════════
+function makeKnob(id,dispId,opts){
+  const canvas=document.getElementById(id), display=document.getElementById(dispId);
+  const ctx=canvas.getContext('2d');
+  let value=opts.init, drag=false, dragY0=0, val0=0;
+  const toN=v=>opts.log?Math.log(v/opts.min)/Math.log(opts.max/opts.min):(v-opts.min)/(opts.max-opts.min);
+  function set(v){
+    value=Math.max(opts.min,Math.min(opts.max,v));
+    draw(); display.textContent=opts.fmt(value); opts.onSet(value);
+  }
+  function draw(){
+    const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
+    const R=Math.min(W,H)/2-8,A0=Math.PI*0.75,ARC=Math.PI*1.5;
+    const Av=A0+toN(value)*ARC,col=opts.color||'#4af';
+    ctx.clearRect(0,0,W,H);
+    ctx.beginPath();ctx.arc(cx,cy,R,A0,A0+ARC);ctx.strokeStyle='#252525';ctx.lineWidth=5;ctx.lineCap='round';ctx.stroke();
+    ctx.beginPath();ctx.arc(cx,cy,R,A0,Av);ctx.strokeStyle=col;ctx.lineWidth=5;ctx.stroke();
+    ctx.beginPath();ctx.arc(cx,cy,R-9,0,Math.PI*2);ctx.fillStyle='#1e1e1e';ctx.fill();ctx.strokeStyle='#2e2e2e';ctx.lineWidth=2;ctx.stroke();
+    const ix=cx+(R-15)*Math.cos(Av),iy=cy+(R-15)*Math.sin(Av);
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(ix,iy);ctx.strokeStyle='#ccc';ctx.lineWidth=2;ctx.stroke();
+    ctx.beginPath();ctx.arc(ix,iy,3,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+  }
+  canvas.addEventListener('mousedown',e=>{drag=true;dragY0=e.clientY;val0=value;e.preventDefault();});
+  window.addEventListener('mousemove',e=>{if(!drag)return;const dy=dragY0-e.clientY;set(opts.log?val0*Math.exp(dy*Math.log(opts.max/opts.min)/300):val0+dy*(opts.max-opts.min)/200);});
+  window.addEventListener('mouseup',()=>{drag=false;});
+  canvas.addEventListener('wheel',e=>{e.preventDefault();const f=e.deltaY>0?-0.03:0.03;set(opts.log?value*Math.exp(f*Math.log(opts.max/opts.min)):value+f*(opts.max-opts.min));},{passive:false});
+  set(opts.init);
+  return {set};
+}
+
+// ─── Knob inits ───────────────────────────────────────────────────────────────
+makeKnob('kp','vp',{min:1,max:500,init:pid.Kp,log:true,color:'#4af',fmt:v=>v.toFixed(1),
+  onSet:v=>{pid.Kp=v;scheduleAnalysis();}
+});
+makeKnob('ki','vi',{min:0,max:15,init:pid.Ki,log:false,color:'#4af',fmt:v=>v.toFixed(2),
+  onSet:v=>{pid.Ki=v;integral=0;scheduleAnalysis();}
+});
+makeKnob('kd','vd',{min:0,max:80,init:pid.Kd,log:false,color:'#4af',fmt:v=>v.toFixed(1),
+  onSet:v=>{pid.Kd=v;scheduleAnalysis();}
+});
+const spKnob=makeKnob('ksp','vsp',{min:-20,max:20,init:0,log:false,color:'#fa6',
+  fmt:v=>posMode?v.toFixed(2)+' m':(v>=0?'+':'')+v.toFixed(1)+'°',
+  onSet:v=>{
+    if(posMode){ xTarget=v*(2/20); }
+    else { pid.setpoint=v*Math.PI/180; }
+    integral=0;
+  }
+});
+
+makeKnob('pkp','vpkp',{min:0.01,max:5,init:posPid.Kp,log:true,color:'#fa6',fmt:v=>v.toFixed(3),
+  onSet:v=>{posPid.Kp=v;}
+});
+makeKnob('pki','vpki',{min:0,max:3,init:posPid.Ki,log:false,color:'#fa6',fmt:v=>v.toFixed(3),
+  onSet:v=>{posPid.Ki=v;posIntegral=0;}
+});
+makeKnob('pkd','vpkd',{min:0,max:2,init:posPid.Kd,log:false,color:'#fa6',fmt:v=>v.toFixed(3),
+  onSet:v=>{posPid.Kd=v;}
+});
+
+// ─── Mode toggle ──────────────────────────────────────────────────────────────
+document.getElementById('btn-posmode').addEventListener('click',()=>{
+  posMode=!posMode;
+  const btn=document.getElementById('btn-posmode');
+  btn.textContent=posMode?'MODE: POSITION':'MODE: ANGLE';
+  btn.classList.toggle('active',posMode);
+  document.getElementById('sp-label').textContent=posMode?'X TARGET (m)':'SETPOINT (°)';
+  document.getElementById('pos-controls').style.display=posMode?'flex':'none';
+  integral=0; pid.setpoint=0; xTarget=0;
+  resetSim();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDERERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+
+// ─── Step response ────────────────────────────────────────────────────────────
+function renderStepResp(){
+  if(!stepData||stepData.length===0) return;
+  const cv=document.getElementById('step'),ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,ML=50,MR=15,MT=12,MB=28;
+  const PW=W-ML-MR,PH=H-MT-MB;
+  ctx.fillStyle='#131313';ctx.fillRect(0,0,W,H);
+
+  const r=Math.PI/180; // 1° in rad
+  const tMax=stepData[stepData.length-1].t;
+  const allTh=stepData.map(d=>d.theta);
+  const thMin=Math.min(0,...allTh)*1.1, thMax=Math.max(r,...allTh)*1.3;
+  const toX=t=>ML+(t/tMax)*PW;
+  const toY=th=>MT+(1-(th-thMin)/(thMax-thMin))*PH;
+
+  // Grid
+  ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;
+  for(let t=0;t<=tMax;t+=0.5){const px=toX(t);ctx.beginPath();ctx.moveTo(px,MT);ctx.lineTo(px,MT+PH);ctx.stroke();}
+  // Zero line
+  const py0=toY(0);
+  ctx.beginPath();ctx.moveTo(ML,py0);ctx.lineTo(ML+PW,py0);ctx.strokeStyle='#222';ctx.lineWidth=1;ctx.stroke();
+  // Setpoint line
+  const pySp=toY(r);
+  ctx.beginPath();ctx.moveTo(ML,pySp);ctx.lineTo(ML+PW,pySp);
+  ctx.strokeStyle='rgba(255,160,60,0.5)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,160,60,0.6)';ctx.font='9px monospace';ctx.textAlign='left';
+  ctx.fillText('setpoint 1°',ML+3,pySp-3);
+
+  // ±2% settling band
+  const band=0.02*r;
+  ctx.fillStyle='rgba(68,170,255,0.05)';
+  ctx.fillRect(ML,toY(r+band),PW,toY(r-band)-toY(r+band));
+
+  // θ(t) curve
+  ctx.beginPath();
+  stepData.forEach((d,i)=>{const px=toX(d.t),py=toY(d.theta);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});
+  ctx.strokeStyle='#4af';ctx.lineWidth=2;ctx.stroke();
+
+  // Overshoot marker
+  const maxTh=Math.max(...allTh), maxIdx=allTh.indexOf(maxTh);
+  if(maxTh>r*1.005){
+    const px=toX(stepData[maxIdx].t),py=toY(maxTh);
+    ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fillStyle='#f84';ctx.fill();
+    const os=((maxTh-r)/r*100).toFixed(1);
+    ctx.fillStyle='#f84';ctx.font='9px monospace';ctx.textAlign='left';
+    ctx.fillText(`OS=${os}%`,px+5,py-3);
+  }
+
+  // Settling time (last cross into ±2%)
+  let settleT=null;
+  for(let i=stepData.length-1;i>=0;i--){
+    if(Math.abs(stepData[i].theta-r)>band){settleT=stepData[i].t;break;}
+  }
+  if(settleT!==null&&settleT>0.01){
+    const px=toX(settleT);
+    ctx.beginPath();ctx.moveTo(px,MT);ctx.lineTo(px,MT+PH);
+    ctx.strokeStyle='rgba(68,170,255,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#4af';ctx.font='9px monospace';ctx.textAlign='left';
+    ctx.fillText(`ts=${settleT.toFixed(2)}s`,px+3,MT+12);
+  }
+
+  // Axes
+  ctx.strokeStyle='#333';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(ML,MT);ctx.lineTo(ML,MT+PH);ctx.lineTo(ML+PW,MT+PH);ctx.stroke();
+  ctx.fillStyle='#444';ctx.font='9px monospace';ctx.textAlign='center';
+  for(let t=0;t<=tMax;t+=0.5) ctx.fillText(t.toFixed(1)+'s',toX(t),MT+PH+12);
+  ctx.fillStyle='#555';ctx.textAlign='center';ctx.fillText('Time (s)',ML+PW/2,H-3);
+  ctx.save();ctx.translate(12,MT+PH/2);ctx.rotate(-Math.PI/2);ctx.fillText('θ (rad)',0,0);ctx.restore();
+  ctx.fillStyle='#555';ctx.textAlign='left';ctx.font='10px monospace';
+  ctx.fillText('θ(t)  [linearized step response]',ML+4,MT+12);
+}
+
+// ─── Simulation canvas ────────────────────────────────────────────────────────
+function renderSim(){
+  const cv=document.getElementById('sim'),ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,PX=90,oX=W/2,tY=Math.round(H*0.68),CW=56,CH=28;
+  const thSp=getThSp();
+  ctx.fillStyle='#131313';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1;
+  for(let gx=0;gx<W;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
+  for(let gy=0;gy<H;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
+  const tL=oX-TRACK_LIM*PX,tR=oX+TRACK_LIM*PX;
+  ctx.beginPath();ctx.moveTo(tL-10,tY);ctx.lineTo(tR+10,tY);ctx.strokeStyle='#333';ctx.lineWidth=4;ctx.stroke();
+  ctx.strokeStyle='#7a3a2a';ctx.lineWidth=2;ctx.setLineDash([5,4]);
+  for(const lx of[tL,tR]){ctx.beginPath();ctx.moveTo(lx,tY-50);ctx.lineTo(lx,tY+12);ctx.stroke();}
+  ctx.setLineDash([]);
+  // Position target indicator (pos mode)
+  if(posMode){const xtPx=oX+xTarget*PX;ctx.beginPath();ctx.moveTo(xtPx,tY-60);ctx.lineTo(xtPx,tY+12);ctx.strokeStyle='rgba(255,160,60,0.6)';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);}
+  const cX=oX+sim.x*PX,cTop=tY-CH;
+  for(const wx of[cX-16,cX+16]){ctx.beginPath();ctx.arc(wx,tY,7,0,Math.PI*2);ctx.fillStyle='#333';ctx.fill();ctx.strokeStyle='#555';ctx.lineWidth=2;ctx.stroke();}
+  ctx.beginPath();ctx.rect(cX-CW/2,cTop,CW,CH);
+  ctx.fillStyle=fallen?'#3a1a1a':'#1a2f4a';ctx.fill();ctx.strokeStyle=fallen?'#f54':'#4af';ctx.lineWidth=2;ctx.stroke();
+  const polePx=POLE_HALF*2*PX;
+  const tipX=cX+polePx*Math.sin(sim.th),tipY=cTop-polePx*Math.cos(sim.th);
+  ctx.beginPath();ctx.moveTo(cX,cTop);ctx.lineTo(tipX,tipY);ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=10;ctx.lineCap='round';ctx.stroke();
+  const pg=ctx.createLinearGradient(cX,cTop,tipX,tipY);
+  pg.addColorStop(0,'#777');pg.addColorStop(1,fallen?'#f96':'#aaddff');
+  ctx.beginPath();ctx.moveTo(cX,cTop);ctx.lineTo(tipX,tipY);ctx.strokeStyle=pg;ctx.lineWidth=7;ctx.stroke();
+  if(Math.abs(thSp)>0.002){const gL=polePx*0.65;ctx.beginPath();ctx.moveTo(cX,cTop);ctx.lineTo(cX+gL*Math.sin(thSp),cTop-gL*Math.cos(thSp));ctx.strokeStyle='rgba(255,160,60,0.4)';ctx.lineWidth=3;ctx.setLineDash([6,5]);ctx.stroke();ctx.setLineDash([]);}
+  ctx.beginPath();ctx.arc(cX,cTop,5,0,Math.PI*2);ctx.fillStyle='#aaa';ctx.fill();
+  ctx.beginPath();ctx.arc(tipX,tipY,5,0,Math.PI*2);ctx.fillStyle=fallen?'#f54':'#4af';ctx.fill();
+  ctx.fillStyle='#555';ctx.font='12px monospace';ctx.textAlign='left';
+  ctx.fillText(`θ = ${(sim.th*180/Math.PI).toFixed(2)}°`,10,20);
+  ctx.fillText(`x = ${sim.x.toFixed(3)} m`,10,36);
+  ctx.fillText(`F = ${lastF.toFixed(1)} N`,10,52);
+  if(posMode){ctx.fillStyle='#6a4';ctx.fillText(`x_sp = ${xTarget.toFixed(2)} m`,10,68);}
+  if(fallen){ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#f54';ctx.font='bold 26px monospace';ctx.textAlign='center';ctx.fillText('FALLEN',W/2,H/2-14);ctx.fillStyle='#888';ctx.font='14px monospace';ctx.fillText('resetting...',W/2,H/2+14);}
+}
+
+function renderPlot(){
+  const cv=document.getElementById('plot'),ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height,mY=H/2,scY=mY/(25*Math.PI/180);
+  ctx.fillStyle='#131313';ctx.fillRect(0,0,W,H);
+  ctx.beginPath();ctx.moveTo(0,mY);ctx.lineTo(W,mY);ctx.strokeStyle='#222';ctx.lineWidth=1;ctx.stroke();
+  for(const deg of[-10,10]){const ry=mY-(deg*Math.PI/180)*scY;ctx.beginPath();ctx.moveTo(0,ry);ctx.lineTo(W,ry);ctx.strokeStyle='#1e1e1e';ctx.lineWidth=1;ctx.setLineDash([3,7]);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#383838';ctx.font='10px monospace';ctx.textAlign='left';ctx.fillText(`${deg>0?'+':''}${deg}°`,3,ry-2);}
+  const spY=mY-getThSp()*scY;ctx.beginPath();ctx.moveTo(0,spY);ctx.lineTo(W,spY);ctx.strokeStyle='rgba(255,160,60,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,5]);ctx.stroke();ctx.setLineDash([]);
+  if(thetaHistory.length>1){ctx.beginPath();thetaHistory.forEach((th,i)=>{const px=(i/HIST_LEN)*W,py=mY-th*scY;i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);});ctx.strokeStyle='#3a8fc0';ctx.lineWidth=1.5;ctx.stroke();}
+  ctx.fillStyle='#2a2a2a';ctx.font='11px monospace';ctx.textAlign='right';ctx.fillText('θ history',W-6,14);
+}
+
+// ─── Main loop ────────────────────────────────────────────────────────────────
+let lastTs=null;
+function loop(ts){
+  if(!lastTs) lastTs=ts;
+  const dt=Math.min((ts-lastTs)/1000,0.05); lastTs=ts;
+  if(!fallen){
+    const steps=Math.round(dt/DT);
+    for(let i=0;i<steps;i++){const F=pidStep();lastF=F;physicsStep(F);}
+    thetaHistory.push(sim.th);
+    if(thetaHistory.length>HIST_LEN) thetaHistory.shift();
+    if(Math.abs(sim.th)>Math.PI/2||Math.abs(sim.x)>TRACK_LIM){fallen=true;fallenT=0;}
+  } else {
+    fallenT+=dt;
+    document.getElementById('status').textContent=`Resetting in ${Math.max(0,2.2-fallenT).toFixed(1)}s`;
+    if(fallenT>2.2) resetSim();
+  }
+  renderSim(); renderPlot();
+  requestAnimationFrame(loop);
+}
+
+// ─── Buttons ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-reset').addEventListener('click',()=>resetSim());
+document.getElementById('btn-nudge').addEventListener('click',()=>{sim.thd+=(Math.random()-0.5)*1.2;sim.xd+=(Math.random()-0.5)*0.5;});
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+stepData=computeStepResponse();
+renderStepResp();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
